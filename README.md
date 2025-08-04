@@ -35,7 +35,6 @@ Tasks are evaluated using 4 parameters:
 #### Metrics Output
 - Task assignment logs printed to console
 - Summary of Q-class counts and routing shown
-- Optionally logs metrics to `metrics.json`
 
 ---
 
