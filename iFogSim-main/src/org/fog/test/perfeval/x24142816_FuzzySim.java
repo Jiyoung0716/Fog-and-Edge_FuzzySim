@@ -57,42 +57,39 @@ public class x24142816_FuzzySim {
 	
 	static boolean CLOUD = false;
 	
-	// K-Means 유사 클러스터링을 위한 중심값 설정 (예: Task Size 중심)
+	// Setting Centroids for K-Means Similarity Clustering (e.g., Task Size Centroid)
+	// [Paper Reference] Centroids for KMeans similarity clustering (Group A/B distinction)
 	static double centroidA = 300;
 	static double centroidB = 700;
-
 	
 	// static int numOfDepts = 2;
 	static int numOfDepts = 4; //Fog 노드 수 증가
 	static int numOfMobilesPerDept = 5;
 	static double EEG_TRANSMISSION_TIME = 5;
 	
-	// Q별 카운팅 변수 선언 
+	// Defined counting variable per Queues 
+	// [Paper Reference] it helps to keep track three layer work (Motion / Face / Archive)
 	static int q1Count = 0;
 	static int q2Count = 0;
 	static int q3Count = 0;
 	
-	// 전략 선택 스위치
-	static boolean useRoundRobin = true;
-	
-	// FCC(Fog Cluster Controller) 	//Task Size 기반 그룹 분류 + 그룹 내 최소 에너지 Fog 선택
+	// FCC(Fog Cluster Controller)
 	// Define Group
 	static List<String> fogGroupA = Arrays.asList("d-0", "d-1");
 	static List<String> fogGroupB = Arrays.asList("d-2", "d-3");
-	// Define RR index per group
-	static int rrIndexA = 0;
-	static int rrIndexB = 0;
 	
-	// FuzzyScore (classifyTask) 점수 보여주기 (전역 선언)
+	// FuzzyScore (classifyTask)
 	private static double lastFuzzyScore = 0;
 	
-	// K-Means 유사 클러스터링 기반 오프로딩 (선택함수)
+	/**
+	 * [Paper Reference] Section IV.B – Fog Layer: K-Means + DQN Approach
+	 * Selects a fog node for Q2 tasks using a K-Means-like method based on task size.
+	 * Chooses the node with the lowest energy consumption within the selected group.
+	 * Simplifies the paper’s DQN-based selection into a lightweight, energy-aware strategy.
+	 */
 	private static String selectFogNodeByKMeansSim(double taskSize) {
 	    double distA = Math.abs(taskSize - centroidA);
 	    double distB = Math.abs(taskSize - centroidB);
-	    
-	    // String group = (distA < distB) ? "A" : "B";
-	    // String selectedFog = group.equals("A") ? "d-0" : "d-1";
 
 	    List<String> targetGroup = (distA < distB) ? fogGroupA : fogGroupB;
 	    String group = (distA < distB) ? "A" : "B";
@@ -112,14 +109,18 @@ public class x24142816_FuzzySim {
 	    if (bestFog == null && !targetGroup.isEmpty()) {
 	        bestFog = targetGroup.get(0);
 	    }
-
-	    //System.out.println("[KMeans-Sim] Q2 Task assigned to: " + bestFog + " (Cluster: " + group + ")");
 	    System.out.println(" Cluster Assignment: CCTV Cluster " + group + " (via KMeans - location-based)");
 	    return bestFog;
 	}
 
 	
-	// Fuzzy Classification - Task 특성에 따라 Q1/Q2/Q3 결정
+	/**
+	 * [Paper Reference] Algorithm 2 - Offloading Decisions Using Fuzzy Logic Algorithm
+	 * Fuzzy logic-based task classification function.
+	 * Calculates a fuzzy score based on four input parameters:
+	 * Task size, Delay tolerance, Computational demand, Communication demand
+	 * Based on the score, it is classified into one of the three queues: Q1(local), Q2(Fog nodes), Q3(Cloud)
+	 */
 	private static String classifyTask(double size, double delay, double comp, double comm) {
 		double fuzzyScore = 0;
 		
@@ -133,7 +134,7 @@ public class x24142816_FuzzySim {
 	    else if (delay < 400) fuzzyScore += 0.6;
 	    else fuzzyScore += 0.9;
 
-	 // Computational Demand 평가
+	    // Computational Demand 평가
 	    if (comp < 30) fuzzyScore += 0.3;
 	    else if (comp < 60) fuzzyScore += 0.6;
 	    else fuzzyScore += 0.9;
@@ -150,7 +151,11 @@ public class x24142816_FuzzySim {
 	    else return "Q3";
 	}
 	
-	// 에너지가져오기 함 (Task Size 기반 그룹 분류 + 그룹 내 최소 에너지 Fog 선택)
+	/**
+	 * [Paper Reference] Section IV.B - State-Aware Fog Node Selection
+	 *  Returns the current energy consumption of a specific FogDevice.
+	 * This method is used by selectFogNodeByKMeansSim() to identify the fog node
+	 */
 	private static double getDeviceEnergy(String deviceName) {
 	    for (FogDevice device : fogDevices) {
 	        if (device.getName().equals(deviceName)) {
@@ -160,12 +165,17 @@ public class x24142816_FuzzySim {
 	    return Double.MAX_VALUE;
 	}
 
-
+	/**
+	 * [[Paper Reference] Section V – Performance Evaluation
+	 * Initializes and runs the simulation environment for evaluating the proposed offloading strategy.
+	 * Task routing decisions and classification logs are printed during runtime.
+	 * @param args
+	 */
 	public static void main(String[] args) {
 		
 	    Log.printLine("===================== Starting FuzzySim ====================");
 
-	    // ✅ 예외 핸들링
+	    // 예외 핸들링
 	    Thread.setDefaultUncaughtExceptionHandler((t, e) -> {
 	        System.err.println("❌ Uncaught exception in thread: " + t.getName());
 	        e.printStackTrace();
@@ -185,7 +195,7 @@ public class x24142816_FuzzySim {
 	        Application application = createApplication(appId, broker.getId());
 	        application.setUserId(broker.getId());
 
-	        // ✅ 루프 등록: Loop ID 1로 등록하고 이름과 구조 연결
+	        // 루프 등록: Loop ID 1로 등록하고 이름과 구조 연결
 	        TimeKeeper.getInstance().addLoop(appId, Arrays.asList("CAMERA_FRAME", "client", "task_processor", "client", "DISPLAY"));
 	        TimeKeeper.getInstance().registerLoop(1, Arrays.asList("CAMERA_FRAME", "client", "task_processor", "client", "DISPLAY"));
 
@@ -213,7 +223,7 @@ public class x24142816_FuzzySim {
 
 	        TimeKeeper.getInstance().setSimulationStartTime(Calendar.getInstance().getTimeInMillis());
 
-	     // ✅ DISPLAY actuator 등록 (여기 추가)
+	     // DISPLAY actuator 등록 (여기 추가)
 	        int gatewayId = -1;
 	        for (FogDevice device : fogDevices) {
 	            if (device.getName().equals("m-0-0")) {
@@ -233,7 +243,8 @@ public class x24142816_FuzzySim {
 	}
 
 	/**
-	 * Creates the fog devices in the physical topology of the simulation.
+	 * [Paper Reference] Section III – Proposed System Architecture
+	 * The structure follows the proposed model: Cloud → Proxy → Fog → Mobile
 	 * @param userId
 	 * @param appId
 	 */
@@ -266,36 +277,44 @@ public class x24142816_FuzzySim {
 		}
 		return dept;
 	}
-	
+	/**
+	 * [Paper Reference] Section IV.A – IoT Layer: Task Generation and Fuzzy Classification
+	  * This method creates a mobile Fog device (m-x-x) representing an IoT node (e.g., smart camera),
+	  * attaches a camera sensor and display actuator to it, and generates a simulated task with random attributes.
+	  * The task is classified using a fuzzy logic-based method into one of three categories:
+	  *   - Q1: Processed locally on the device (low demand, low delay)
+	  *   - Q2: Offloaded to a fog node (moderate demand)
+	  *   - Q3: Offloaded to the cloud (high demand or tolerant to delay)
+	 */
 	private static FogDevice addMobile(String id, int userId, String appId, int parentId, ModuleMapping moduleMapping){
+		// Create the mobile fog device with limited resources
 		FogDevice mobile = createFogDevice("m-"+id, 1000, 1000, 10000, 270, 3, 0, 87.53, 82.44);
 		mobile.setParentId(parentId);
+		
+		// Attach a CAMERA_FRAME sensor (e.g., camera feed)
 		Sensor taskSensor = new Sensor("s-"+id, "CAMERA_FRAME", userId, appId, new DeterministicDistribution(EEG_TRANSMISSION_TIME));
 		sensors.add(taskSensor);
 		taskSensor.setGatewayDeviceId(mobile.getId());
 		taskSensor.setLatency(6.0);
 		
+		// Attach a DISPLAY actuator (e.g., screen output)
 		Actuator display = new Actuator("a-"+id, userId, appId, "DISPLAY");
 		actuators.add(display);
-		
 		display.setGatewayDeviceId(mobile.getId());
 		display.setLatency(1.0);  // latency of connection between Display actuator and the parent Smartphone is 1 ms
 		
 		// 퍼지 분류 및 출력 추가 (Task 생성 및 분류 출력)
-		// ❶ 랜덤한 Task 속성
+		// Randomly generate task parameters (to simulate heterogeneous IoT tasks)
 		double taskSize = Math.random() * 1000;
 		double taskDelay = Math.random() * 500;
 		double compDemand = Math.random() * 100;   // 연산 요구량: 0~100
 		double commDemand = Math.random() * 50;    // 통신 요구량: 0~50
 
-		// ❷ 퍼지 분류 함수 호출
-		String taskType = classifyTask(taskSize, taskDelay, compDemand, commDemand);
-
 		// 퍼지 분류(Q1/Q2/Q3) 결과에 따라, concentration_calculator라는 모듈을 어느 장치에 배치할지 결정
-				String classification = classifyTask(taskSize, taskDelay, compDemand, commDemand);
+		// Classify task using fuzzy logic
+		String classification = classifyTask(taskSize, taskDelay, compDemand, commDemand);
 				
-		// ❸ 어디로 보낼지 결정 (지금은 로그만 출력)
-		// 콘솔 출력
+		// Human-readable task type for logging
 		String taskName = classification.equals("Q1") ? "Motion Detection" :
 	                 classification.equals("Q2") ? "Face Recognition" :
 	                 "Video Archiving";
@@ -305,31 +324,31 @@ public class x24142816_FuzzySim {
 		    String.format("%.1f", taskDelay) + "ms | Comp Load: " + String.format("%.1f", compDemand) +
 		    " | Bandwidth: " + String.format("%.1f", commDemand));
 		
-		// Q1이면 로컬(mobile)에 concentration_calculator 배치
+		// Module assignment based on classification
 		if (classification.equals("Q1")) {
+			// Q1 → Process locally on the mobile device
 			q1Count++;
 		    moduleMapping.addModuleToDevice("task_processor", "m-" + id); // 로컬 모바일 디바이스에서 처리 
 		}
 		else if (classification.equals("Q2")) {
+			// Q2 → Offload to selected fog node using KMeans-like logic
 			q2Count++;
 			
-			// ✅ KMeans 기반 그룹 선택 및 Fog 노드 선택
+			// KMeans 기반 그룹 선택 및 Fog 노드 선택
 			String selectedFog = selectFogNodeByKMeansSim(taskSize);
 			String group = (Math.abs(taskSize - centroidA) < Math.abs(taskSize - centroidB)) ? "A" : "B";
 			moduleMapping.addModuleToDevice("task_processor", selectedFog);
 		    
 		    // FCC 사용을 추가한 로직
+			// Logging FCC decision (group-based selection)
 			System.out.println(" Routing: FCC assigned task from Camera m-" + id +
 				    " to Fog Node " + selectedFog + " (via DQN-based decision in Group " + group + ")");
-		    //System.out.println("[Hybrid-FCC] Q2 Task from m-" + id + 
-		    //	    " assigned to: " + selectedFog + 
-		    //	    " (Group: " + group + ")");
 		}
 		else {
+			// Q3 → Offload to cloud (high demand / delay-tolerant)
 			q3Count++;
 		    moduleMapping.addModuleToDevice("task_processor", "cloud"); // Cloud에서 처리 
 		}
-		//System.out.println("[COUNT] q1Count=" + q1Count + ", q2Count=" + q2Count + ", q3Count=" + q3Count);
 		System.out.println("[Task Summary] Motion=" + q1Count + ", Face=" + q2Count + ", Archive=" + q3Count);
 		System.out.println("==============================================================");
 
@@ -403,56 +422,72 @@ public class x24142816_FuzzySim {
 		return fogdevice;
 	}
 
-	/**
-	 * Function to create the EEG Tractor Beam game application in the DDF model. 
-	 * @param appId unique identifier of the application
-	 * @param userId identifier of the user of the application
-	 * @return
-	 */
-	@SuppressWarnings({"serial" })
-	private static Application createApplication(String appId, int userId){
-		
-		Application application = Application.createApplication(appId, userId); // creates an empty application model (empty directed graph)
-		
-		/*
-		 * Adding modules (vertices) to the application model (directed graph)
-		 */
-		application.addAppModule("client", 10); // adding module Client to the application model
-		application.addAppModule("task_processor", 10); // adding module Concentration Calculator to the application model
-		application.addAppModule("connector", 10); // adding module Connector to the application model
-		application.addAppModule("DISPLAY", 1);  
-		
-		/*
-		 * Connecting the application modules (vertices) in the application model (directed graph) with edges
-		 */
-		if(EEG_TRANSMISSION_TIME==10)
-			application.addAppEdge("CAMERA_FRAME", "client", 2000, 500, "CAMERA_FRAME", Tuple.UP, AppEdge.SENSOR); // 센서 이름 변경 ECC -> IoT Task
-		else
-			application.addAppEdge("CAMERA_FRAME", "client", 3000, 500, "CAMERA_FRAME", Tuple.UP, AppEdge.SENSOR);
-		application.addAppEdge("client", "task_processor", 3500, 500, "FACE_RECOGNITION", Tuple.UP, AppEdge.MODULE); // adding edge from Client to Concentration Calculator module carrying tuples of type _SENSOR
-		application.addAppEdge("task_processor", "connector", 100, 1000, 1000, "DEVICE_STATUS", Tuple.UP, AppEdge.MODULE); // adding periodic edge (period=1000ms) from Concentration Calculator to Connector module carrying tuples of type PLAYER_GAME_STATE
-		application.addAppEdge("task_processor", "client", 14, 500, "ALERT_SIGNAL", Tuple.DOWN, AppEdge.MODULE);  // adding edge from Concentration Calculator to Client module carrying tuples of type CONCENTRATION
-		application.addAppEdge("connector", "client", 100, 28, 1000, "TIME_SYNC", Tuple.DOWN, AppEdge.MODULE); // adding periodic edge (period=1000ms) from Connector to Client module carrying tuples of type GLOBAL_GAME_STATE
-		application.addAppEdge("client", "DISPLAY", 1000, 500, "LOCAL_FEEDBACK", Tuple.DOWN, AppEdge.ACTUATOR);  // adding edge from Client module to Display (actuator) carrying tuples of type SELF_STATE_UPDATE
-		application.addAppEdge("client", "DISPLAY", 1000, 500, "SYSTEM_NOTIFICATION", Tuple.DOWN, AppEdge.ACTUATOR);  // adding edge from Client module to Display (actuator) carrying tuples of type GLOBAL_STATE_UPDATE
-		
-		/*
-		 * Defining the input-output relationships (represented by selectivity) of the application modules. 
-		 */
-		application.addTupleMapping("client", "CAMERA_FRAME", "FACE_RECOGNITION", new FractionalSelectivity(0.9)); // IoT-Task 
-		application.addTupleMapping("task_processor", "FACE_RECOGNITION", "ALERT_SIGNAL", new FractionalSelectivity(1.0));
-		application.addTupleMapping("client", "ALERT_SIGNAL", "LOCAL_FEEDBACK", new FractionalSelectivity(1.0)); // 1.0 tuples of type SELF_STATE_UPDATE are emitted by Client module per incoming tuple of type CONCENTRATION 
-		application.addTupleMapping("client", "TIME_SYNC", "SYSTEM_NOTIFICATION", new FractionalSelectivity(1.0)); // 1.0 tuples of type GLOBAL_STATE_UPDATE are emitted by Client module per incoming tuple of type GLOBAL_GAME_STATE
 	
-		/*
-		 * Defining application loops to monitor the latency of. 
-		 * Here, we add only one loop for monitoring : EEG(sensor) -> Client -> Concentration Calculator -> Client -> DISPLAY (actuator)
-		 */
-		final AppLoop loop1 = new AppLoop(new ArrayList<String>(){{add("CAMERA_FRAME");add("client");add("task_processor");add("client");add("DISPLAY");}});
-		List<AppLoop> loops = new ArrayList<AppLoop>(){{add(loop1);}};
-		application.setLoops(loops);
-		
-		return application;
+	/**
+	 * [Paper Reference] Corresponds to Algorithm 1 - Application Preparation
+	 * 
+	 * This method defines the structure of the IoT application by:
+	 * - Adding application modules (vertices)
+	 * - Defining data flow between modules (edges)
+	 * - Specifying tuple transformation ratios (selectivity)
+	 * - Registering loops for latency monitoring
+	 */
+	private static Application createApplication(String appId, int userId){
+
+	    // Create an empty application (as a directed graph)
+	    Application application = Application.createApplication(appId, userId);
+
+	    /*
+	     * 1. Add modules (vertices) to the application
+	     * Modules represent logical units of computation.
+	     */
+	    application.addAppModule("client", 10);           // Initial processing module on the IoT device
+	    application.addAppModule("task_processor", 10);   // Core processing module (e.g., Face Recognition, Motion Detection)
+	    application.addAppModule("connector", 10);        // Handles periodic synchronization/status communication
+	    application.addAppModule("DISPLAY", 1);           // Actuator module for user output
+
+	    /*
+	     * 2. Define data flow between modules (edges)
+	     * Tuples carry data between modules; direction, size, bandwidth, and type are specified.
+	     */
+	    if (EEG_TRANSMISSION_TIME == 10)
+	        application.addAppEdge("CAMERA_FRAME", "client", 2000, 500, "CAMERA_FRAME", Tuple.UP, AppEdge.SENSOR);
+	    else
+	        application.addAppEdge("CAMERA_FRAME", "client", 3000, 500, "CAMERA_FRAME", Tuple.UP, AppEdge.SENSOR);
+
+	    application.addAppEdge("client", "task_processor", 3500, 500, "FACE_RECOGNITION", Tuple.UP, AppEdge.MODULE);
+	    application.addAppEdge("task_processor", "connector", 100, 1000, 1000, "DEVICE_STATUS", Tuple.UP, AppEdge.MODULE);
+	    application.addAppEdge("task_processor", "client", 14, 500, "ALERT_SIGNAL", Tuple.DOWN, AppEdge.MODULE);
+	    application.addAppEdge("connector", "client", 100, 28, 1000, "TIME_SYNC", Tuple.DOWN, AppEdge.MODULE);
+	    application.addAppEdge("client", "DISPLAY", 1000, 500, "LOCAL_FEEDBACK", Tuple.DOWN, AppEdge.ACTUATOR);
+	    application.addAppEdge("client", "DISPLAY", 1000, 500, "SYSTEM_NOTIFICATION", Tuple.DOWN, AppEdge.ACTUATOR);
+
+	    /*
+	     * 3. Define tuple mapping (selectivity model)
+	     * Specifies the transformation ratio from input to output tuples in each module.
+	     */
+	    application.addTupleMapping("client", "CAMERA_FRAME", "FACE_RECOGNITION", new FractionalSelectivity(0.9));
+	    application.addTupleMapping("task_processor", "FACE_RECOGNITION", "ALERT_SIGNAL", new FractionalSelectivity(1.0));
+	    application.addTupleMapping("client", "ALERT_SIGNAL", "LOCAL_FEEDBACK", new FractionalSelectivity(1.0));
+	    application.addTupleMapping("client", "TIME_SYNC", "SYSTEM_NOTIFICATION", new FractionalSelectivity(1.0));
+
+	    /*
+	     * 4. Define application loop for latency monitoring
+	     * Loop: CAMERA_FRAME → client → task_processor → client → DISPLAY
+	     * Used to track end-to-end latency across this path.
+	     */
+	    final AppLoop loop1 = new AppLoop(new ArrayList<String>() {{
+	        add("CAMERA_FRAME");
+	        add("client");
+	        add("task_processor");
+	        add("client");
+	        add("DISPLAY");
+	    }});
+	    List<AppLoop> loops = new ArrayList<AppLoop>() {{ add(loop1); }};
+	    application.setLoops(loops);
+
+	    return application;
 	}
+
 
 }
