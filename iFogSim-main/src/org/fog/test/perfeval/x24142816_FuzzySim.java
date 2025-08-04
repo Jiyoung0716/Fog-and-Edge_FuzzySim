@@ -86,28 +86,6 @@ public class x24142816_FuzzySim {
 	// FuzzyScore (classifyTask) 점수 보여주기 (전역 선언)
 	private static double lastFuzzyScore = 0;
 	
-	// 하이브리드 선택 함수 (FCC 사용 전 Hybrid)
-	private static String selectFogNodeHybrid() {
-	    if (useRoundRobin) {
-	        return selectFogNodeRoundRobin();
-	    } else {
-	        return selectBestFogNodeForQ2();
-	    }
-	}
-	private static String selectFogNodeHybrid(int taskIndex) {
-	    // Task 번호를 기준으로 그룹 선택
-	    List<String> selectedGroup = (taskIndex % 2 == 0) ? fogGroupA : fogGroupB;
-
-	    if (selectedGroup.equals(fogGroupA)) {
-	        String selected = selectedGroup.get(rrIndexA % selectedGroup.size());
-	        rrIndexA++;
-	        return selected;
-	    } else {
-	        String selected = selectedGroup.get(rrIndexB % selectedGroup.size());
-	        rrIndexB++;
-	        return selected;
-	    }
-	}
 	// K-Means 유사 클러스터링 기반 오프로딩 (선택함수)
 	private static String selectFogNodeByKMeansSim(double taskSize) {
 	    double distA = Math.abs(taskSize - centroidA);
@@ -181,29 +159,7 @@ public class x24142816_FuzzySim {
 	    }
 	    return Double.MAX_VALUE;
 	}
-	
-	//Task Size 기반 그룹 분류 + 그룹 내 최소 에너지 Fog 선택
-	private static String selectBestFogNodeBySizeAndEnergy(double taskSize) {
-	    List<String> targetGroup = (taskSize < 400) ? fogGroupA : fogGroupB;
-	    
-	    String bestFog = null;
-	    double minEnergy = Double.MAX_VALUE;
 
-	    for (String fog : targetGroup) {
-	        double energy = getDeviceEnergy(fog);
-	        if (energy < minEnergy) {
-	            minEnergy = energy;
-	            bestFog = fog;
-	        }
-	    }
-	    
-	    // fallback 처리 (null 방지)
-	    if (bestFog == null && !targetGroup.isEmpty()) {
-	        bestFog = targetGroup.get(0); // 그냥 첫 번째 노드라도 리턴
-	    }
-
-	    return bestFog;
-	}
 
 	public static void main(String[] args) {
 		
@@ -497,45 +453,6 @@ public class x24142816_FuzzySim {
 		application.setLoops(loops);
 		
 		return application;
-	}
-	
-	// Q2로 분류된 Task를 가장 적합한 Fog 노드(게이트웨이 노드들 중 MIPS가 가장 높은 노드)에 할당하는 Rule-based 선택 함수
-	// 논문 로직 중 Q2에 해당되는 Task는 DQN으로 하게 되지만, 구현은 어려우므로 Rule-based 선택 
-	private static String selectBestFogNodeForQ2() { 
-	    FogDevice bestDevice = null;
-	    double highestMips = -1;
-
-	    for (FogDevice device : fogDevices) {
-	        if (device.getName().startsWith("d-")) { // 게이트웨이(Fog) 노드만 고려
-	            double mips = device.getHost().getTotalMips(); // 총 MIPS
-	            if (mips > highestMips) {
-	                highestMips = mips;
-	                bestDevice = device;
-	            }
-	        }
-	    }
-
-	    return (bestDevice != null) ? bestDevice.getName() : "cloud"; // fallback
-	}
-	
-	// Round-Robin용 인덱스 변수
-	private static int rrIndex = 0;
-
-	// Round-Robin 방식으로 Fog 노드 선택
-	private static String selectFogNodeRoundRobin() {
-	    List<String> fogNames = new ArrayList<>();
-	    
-	    for (FogDevice device : fogDevices) {
-	        if (device.getName().startsWith("d-")) {
-	            fogNames.add(device.getName());
-	        }
-	    }
-
-	    if (fogNames.isEmpty()) return "cloud"; // fallback
-	    
-	    String selected = fogNames.get(rrIndex % fogNames.size());
-	    rrIndex++;
-	    return selected;
 	}
 
 }
