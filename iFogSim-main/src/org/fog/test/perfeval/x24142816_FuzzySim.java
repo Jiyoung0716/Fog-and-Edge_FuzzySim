@@ -55,7 +55,7 @@ public class x24142816_FuzzySim {
 	static List<Sensor> sensors = new ArrayList<Sensor>();
 	static List<Actuator> actuators = new ArrayList<Actuator>();
 	
-	static boolean CLOUD = false;
+	static boolean CLOUD = true;
 	
 	// Setting Centroids for K-Means Similarity Clustering (e.g., Task Size Centroid)
 	// [Paper Reference] Centroids for KMeans similarity clustering (Group A/B distinction)
