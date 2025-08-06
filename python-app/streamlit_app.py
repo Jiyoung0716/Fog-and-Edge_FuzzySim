@@ -29,7 +29,7 @@ if latest_messages:
     df["color"] = df["q_class"].map(color_map)
 
     # Section: Q-Class Summary
-    st.markdown("### ✅ Number of Tasks by Q-Class")
+    st.markdown("### Number of Tasks by Q-Class")
     q_counts = df["q_class"].value_counts()
     col1, col2, col3 = st.columns(3)
     col1.metric("⚙️ Q1 (Motion)", q_counts.get("Q1", 0))
@@ -39,12 +39,12 @@ if latest_messages:
     # Section: Delay trend
     col4, col5 = st.columns(2)
     with col4:
-        st.markdown("### ⏱️ Delay Trend (ms)")
+        st.markdown("### Delay Trend (ms)")
         st.line_chart(df.set_index("timestamp")["delay_ms"])
 
     # Section: Computational Load
     with col5:
-        st.markdown("### 🧠 Computation Load Trend")
+        st.markdown("### Computation Load Trend")
         st.line_chart(df.set_index("timestamp")["comp_load"])
 
     # Section: Cluster and Routing for Q2
