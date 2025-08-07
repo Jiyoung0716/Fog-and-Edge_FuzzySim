@@ -10,6 +10,9 @@ import java.time.LocalDateTime; // metrics.json
 import org.fog.utils.TimeKeeper; // metrics.json
 import java.util.Map;
 import java.util.HashMap;
+import java.io.PrintStream; // storing log.txt
+import java.io.FileOutputStream; // storing log.txt
+
 
 
 import org.cloudbus.cloudsim.Host;
@@ -174,6 +177,32 @@ public class x24142816_FuzzySim {
 	public static void main(String[] args) {
 		
 	    Log.printLine("===================== Starting FuzzySim ====================");
+	    
+	    String filename = CLOUD ? "result_centralized.txt" : "result_distributed.txt";
+	    //PrintStream fileOut = null;
+	    final PrintStream[] fileOut = new PrintStream[1]; // 배열로 선언하면 effectively final
+	    try {
+	    	final PrintStream originalOut = System.out;
+	    	fileOut[0] = new PrintStream(new FileOutputStream(filename, false)); // false = 덮어쓰기
+	        PrintStream multiOut = new PrintStream(new java.io.OutputStream() {
+	            @Override
+	            public void write(int b) {
+	            	originalOut.write(b); // 콘솔에도 출력
+	                fileOut[0].write(b);    // 파일에도 출력
+	            }
+
+	            @Override
+	            public void flush() {
+	            	originalOut.flush();
+	                fileOut[0].flush();
+	            }
+	        });
+	        System.setOut(multiOut); // 표준 출력 변경
+	        System.setErr(multiOut); // 에러 출력도 동일하게 저장
+	    } catch (Exception e) {
+	        e.printStackTrace();
+	        return;
+	    }
 
 	    // 예외 핸들링
 	    Thread.setDefaultUncaughtExceptionHandler((t, e) -> {
@@ -234,6 +263,8 @@ public class x24142816_FuzzySim {
 	        }
 	        CloudSim.startSimulation();
 	        CloudSim.stopSimulation();
+	        // ✅ [2] 파일 출력 닫기
+	        fileOut[0].close();
 
 
 	    } catch (Exception e) {
